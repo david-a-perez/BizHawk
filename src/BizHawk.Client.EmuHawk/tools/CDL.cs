@@ -198,6 +198,34 @@ namespace BizHawk.Client.EmuHawk
 			lvCDL.RowCount = _cdl.Count;
 		}
 
+		public int CountCoverage()
+		{
+			if (_cdl == null)
+			{
+				return -1;
+			}
+
+			int total = 0;
+
+			foreach (var kvp in _cdl)
+			{
+				foreach (byte data in kvp.Value)
+				{
+					int n = data;
+
+					int count = 0;
+					while (n != 0)
+					{
+						count++;
+						n &= n - 1;
+					}
+					total += count;
+				}
+			}
+
+			return total;
+		}
+
 		public override bool AskSaveChanges()
 		{
 			// nothing to fear:
