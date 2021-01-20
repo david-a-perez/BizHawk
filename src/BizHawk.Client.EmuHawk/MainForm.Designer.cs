@@ -100,6 +100,7 @@ namespace BizHawk.Client.EmuHawk
 			this.StopAVIMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.toolStripSeparator19 = new BizHawk.WinForms.Controls.ToolStripSeparatorEx();
 			this.CaptureOSDMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
+			this.CaptureLuaMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.SynclessRecordingMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.ScreenshotSubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.ScreenshotMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
@@ -116,6 +117,8 @@ namespace BizHawk.Client.EmuHawk
 			this.toolStripSeparator1 = new BizHawk.WinForms.Controls.ToolStripSeparatorEx();
 			this.SoftResetMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.HardResetMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
+			this.EmulatorMenuSeparator2 = new BizHawk.WinForms.Controls.ToolStripSeparatorEx();
+			this.LoadedCoreNameMenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.ViewSubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.WindowSizeSubMenu = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
 			this.x1MenuItem = new BizHawk.WinForms.Controls.ToolStripMenuItemEx();
@@ -829,6 +832,7 @@ namespace BizHawk.Client.EmuHawk
 			this.StopAVIMenuItem,
 			this.toolStripSeparator19,
 			this.CaptureOSDMenuItem,
+			this.CaptureLuaMenuItem,
 			this.SynclessRecordingMenuItem});
 			this.AVSubMenu.Text = "&AVI/WAV";
 			this.AVSubMenu.DropDownOpened += new System.EventHandler(this.AVSubMenu_DropDownOpened);
@@ -850,8 +854,17 @@ namespace BizHawk.Client.EmuHawk
 			// 
 			// CaptureOSDMenuItem
 			// 
+			this.CaptureOSDMenuItem.CheckOnClick = true;
 			this.CaptureOSDMenuItem.Text = "Capture OSD";
 			this.CaptureOSDMenuItem.Click += new System.EventHandler(this.CaptureOSDMenuItem_Click);
+			// 
+			// CaptureLuaMenuItem
+			// 
+			this.CaptureLuaMenuItem.CheckOnClick = true;
+			this.CaptureLuaMenuItem.Name = "CaptureLuaMenuItem";
+			this.CaptureLuaMenuItem.Size = new System.Drawing.Size(225, 22);
+			this.CaptureLuaMenuItem.Text = "Capture Lua";
+			this.CaptureLuaMenuItem.Click += new System.EventHandler(this.CaptureLuaMenuItem_Click);
 			// 
 			// SynclessRecordingMenuItem
 			// 
@@ -908,7 +921,9 @@ namespace BizHawk.Client.EmuHawk
 			this.RebootCoreMenuItem,
 			this.toolStripSeparator1,
 			this.SoftResetMenuItem,
-			this.HardResetMenuItem});
+			this.HardResetMenuItem,
+			this.EmulatorMenuSeparator2,
+			this.LoadedCoreNameMenuItem});
 			this.EmulationSubMenu.Text = "&Emulation";
 			this.EmulationSubMenu.DropDownOpened += new System.EventHandler(this.EmulationMenuItem_DropDownOpened);
 			// 
@@ -931,6 +946,11 @@ namespace BizHawk.Client.EmuHawk
 			// 
 			this.HardResetMenuItem.Text = "&Hard Reset";
 			this.HardResetMenuItem.Click += new System.EventHandler(this.HardResetMenuItem_Click);
+			// 
+			// LoadedCoreNameMenuItem
+			// 
+			this.LoadedCoreNameMenuItem.Enabled = false;
+			this.LoadedCoreNameMenuItem.Text = "Loaded core: NullHawk (NULL)";
 			// 
 			// ViewSubMenu
 			// 
@@ -2609,6 +2629,8 @@ namespace BizHawk.Client.EmuHawk
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx SnesGfxDebuggerMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripSeparatorEx toolStripSeparator18;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx HardResetMenuItem;
+		private BizHawk.WinForms.Controls.ToolStripSeparatorEx EmulatorMenuSeparator2;
+		private BizHawk.WinForms.Controls.ToolStripMenuItemEx LoadedCoreNameMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripSeparatorEx toolStripSeparator19;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx CaptureOSDMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripSeparatorEx toolStripSeparator20;
@@ -2778,5 +2800,6 @@ namespace BizHawk.Client.EmuHawk
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx NdsSyncSettingsMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripMenuItemEx NdsSettingsMenuItem;
 		private BizHawk.WinForms.Controls.ToolStripSeparatorEx toolStripSeparator8;
+		private System.Windows.Forms.ToolStripMenuItem CaptureLuaMenuItem;
 	}
 }

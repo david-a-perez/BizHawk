@@ -167,8 +167,21 @@ namespace BizHawk.Client.Common
 
 			bl.GetLump(BinaryStateLump.StateHistory, false, delegate(BinaryReader br, long length)
 			{
-				TasStateManager?.Dispose();
-				TasStateManager = ZwinderStateManager.Create(br, settings, IsReserved);
+				try
+				{
+					TasStateManager?.Dispose();
+					TasStateManager = ZwinderStateManager.Create(br, settings, IsReserved);
+				}
+				catch
+				{
+					// Continue with a fresh manager. If state history got corrupted, the file is still very much useable
+					// and we would want the user to be able to load, and regenerate their state history
+					// however, we still have an issue of how state history got corrupted
+					TasStateManager = new ZwinderStateManager(
+						Session.Settings.DefaultTasStateManagerSettings,
+						IsReserved);
+					Session.PopupMessage("State history was corrupted, clearing and working with a fresh history.");
+				}
 			});
 		}
 	}

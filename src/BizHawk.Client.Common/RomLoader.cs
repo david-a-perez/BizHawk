@@ -208,9 +208,9 @@ namespace BizHawk.Client.Common
 		{
 			var romExtensions = new[]
 			{
-				"SMS", "SMC", "SFC", "PCE", "SGX", "GG", "SG", "BIN", "GEN", "MD", "SMD", "GB",
-				"NES", "FDS", "ROM", "INT", "GBC", "UNF", "A78", "CRT", "COL", "XML", "Z64",
-				"V64", "N64", "WS", "WSC", "GBA", "32X", "VEC", "O2"
+				".sms", ".smc", ".sfc", ".pce", ".sgx", ".gg", ".sg", ".bin", ".gen", ".md", ".smd", ".gb",
+				".nes", ".fds", ".rom", ".int", ".gbc", ".unf", ".a78", ".crt", ".col", ".xml", ".z64",
+				".v64", ".n64", ".ws", ".wsc", ".gba", ".32x", ".vec", ".o2"
 			};
 
 			// try binding normal rom extensions first
@@ -305,7 +305,7 @@ namespace BizHawk.Client.Common
 			return game;
 		}
 
-		private bool LoadDisc(string path, CoreComm nextComm, HawkFile file, string ext, out IEmulator nextEmulator, out GameInfo game)
+		private bool LoadDisc(string path, CoreComm nextComm, HawkFile file, string ext, string forcedCoreName, out IEmulator nextEmulator, out GameInfo game)
 		{
 			var disc = DiscExtensions.CreateAnyType(path, str => DoLoadErrorCallback(str, "???", LoadErrorType.DiscError));
 			if (disc == null)
@@ -331,11 +331,11 @@ namespace BizHawk.Client.Common
 						}
 					},
 			};
-			nextEmulator = MakeCoreFromCoreInventory(cip);
+			nextEmulator = MakeCoreFromCoreInventory(cip, forcedCoreName);
 			return true;
 		}
 
-		private void LoadM3U(string path, CoreComm nextComm, HawkFile file, out IEmulator nextEmulator, out GameInfo game)
+		private void LoadM3U(string path, CoreComm nextComm, HawkFile file, string forcedCoreName, out IEmulator nextEmulator, out GameInfo game)
 		{
 			M3U_File m3u;
 			using (var sr = new StreamReader(path))
@@ -370,7 +370,7 @@ namespace BizHawk.Client.Common
 				Game = game,
 				Discs = discs
 			};
-			nextEmulator = MakeCoreFromCoreInventory(cip);
+			nextEmulator = MakeCoreFromCoreInventory(cip, forcedCoreName);
 		}
 
 		private IEmulator MakeCoreFromCoreInventory(CoreInventoryParameters cip, string forcedCoreName = null)
@@ -426,11 +426,11 @@ namespace BizHawk.Client.Common
 			rom = new RomGame(file);
 
 			// hacky for now
-			if (file.Extension.ToLowerInvariant() == ".exe")
+			if (file.Extension == ".exe")
 			{
 				rom.GameInfo.System = "PSX";
 			}
-			else if (file.Extension.ToLowerInvariant() == ".nsf")
+			else if (file.Extension == ".nsf")
 			{
 				rom.GameInfo.System = "NES";
 			}
@@ -523,7 +523,7 @@ namespace BizHawk.Client.Common
 			game = rom.GameInfo;
 		}
 
-		private bool LoadXML(string path, CoreComm nextComm, HawkFile file, out IEmulator nextEmulator, out RomGame rom, out GameInfo game)
+		private bool LoadXML(string path, CoreComm nextComm, HawkFile file, string forcedCoreName, out IEmulator nextEmulator, out RomGame rom, out GameInfo game)
 		{
 			nextEmulator = null;
 			rom = null;
@@ -564,7 +564,7 @@ namespace BizHawk.Client.Common
 						})
 						.ToList(),
 				};
-				nextEmulator = MakeCoreFromCoreInventory(cip);
+				nextEmulator = MakeCoreFromCoreInventory(cip, forcedCoreName);
 				return true;
 			}
 			catch (Exception ex)
@@ -685,14 +685,14 @@ namespace BizHawk.Client.Common
 					}
 
 					// not libretro: do extension checking
-					var ext = file.Extension.ToLowerInvariant();
+					var ext = file.Extension;
 					switch (ext)
 					{
 						case ".m3u":
-							LoadM3U(path, nextComm, file, out nextEmulator, out game);
+							LoadM3U(path, nextComm, file, forcedCoreName, out nextEmulator, out game);
 							break;
 						case ".xml":
-							if (!LoadXML(path, nextComm, file, out nextEmulator, out rom, out game))
+							if (!LoadXML(path, nextComm, file, forcedCoreName, out nextEmulator, out rom, out game))
 								return false;
 							break;
 						case ".psf":
@@ -704,7 +704,7 @@ namespace BizHawk.Client.Common
 							{
 								if (file.IsArchive)
 									throw new InvalidOperationException("Can't load CD files from archives!");
-								if (!LoadDisc(path, nextComm, file, ext, out nextEmulator, out game))
+								if (!LoadDisc(path, nextComm, file, ext, forcedCoreName, out nextEmulator, out game))
 									return false;
 							}
 							else

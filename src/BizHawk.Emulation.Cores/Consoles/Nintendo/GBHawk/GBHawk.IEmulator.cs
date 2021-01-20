@@ -81,7 +81,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBHawk
 			{
 				if (_scanlineCallbackLine == -1)
 				{
-					GetGPU();
 					_scanlineCallback(ppu.LCDC);
 				}
 			}
@@ -425,11 +424,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBHawk
 
 		public void Dispose()
 		{
-			Marshal.FreeHGlobal(iptr0);
-			Marshal.FreeHGlobal(iptr1);
-			Marshal.FreeHGlobal(iptr2);
-			Marshal.FreeHGlobal(iptr3);
-
 			audio.DisposeSound();
 		}
 

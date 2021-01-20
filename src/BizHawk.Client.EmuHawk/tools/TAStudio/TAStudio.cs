@@ -199,6 +199,8 @@ namespace BizHawk.Client.EmuHawk
 			MainForm.PauseOnFrame = null;
 			MainForm.PauseEmulator();
 
+			SetupBoolPatterns();
+
 			// Nag if inaccurate core, but not if auto-loading or movie is already loaded
 			if (!CanAutoload && MovieSession.Movie.NotActive())
 			{
@@ -278,7 +280,6 @@ namespace BizHawk.Client.EmuHawk
 			MainForm.SetMainformMovieInfo();
 			MovieSession.ReadOnly = true;
 			SetSplicer();
-			SetupBoolPatterns();
 
 			_engaged = true;
 			return true;
@@ -725,14 +726,14 @@ namespace BizHawk.Client.EmuHawk
 
 		private void DummyLoadMacro(string path)
 		{
-			if (!TasView.Focused && TasView.AnyRowsSelected)
+			if (!TasView.AnyRowsSelected)
 			{
 				return;
 			}
 
 			var loadZone = new MovieZone(path, Emulator, MovieSession, Tools)
 			{
-				Start = TasView.FirstSelectedIndex ?? 0
+				Start = TasView.FirstSelectedIndex.Value
 			};
 			loadZone.PlaceZone(CurrentTasMovie, Config);
 		}

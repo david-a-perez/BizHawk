@@ -2510,6 +2510,12 @@ namespace BizHawk.Client.EmuHawk
 			bb.DiscardAlpha();
 			return bb;
 		}
+		public BitmapBuffer CaptureLua()
+		{
+			var bb = DisplayManager.RenderOffscreenLua(_currentVideoProvider);
+			bb.DiscardAlpha();
+			return bb;
+		}
 
 		private void IncreaseWindowSize()
 		{
@@ -2750,6 +2756,8 @@ namespace BizHawk.Client.EmuHawk
 
 		private void UpdateCoreStatusBarButton()
 		{
+			var coreDispName = CoreExtensions.CoreExtensions.DisplayName(Emulator);
+			LoadedCoreNameMenuItem.Text = $"Loaded core: {coreDispName} ({Emulator.SystemId})";
 			if (Emulator.IsNull())
 			{
 				CoreNameStatusBarButton.Visible = false;
@@ -2759,7 +2767,7 @@ namespace BizHawk.Client.EmuHawk
 			CoreNameStatusBarButton.Visible = true;
 			var attributes = Emulator.Attributes();
 
-			CoreNameStatusBarButton.Text = CoreExtensions.CoreExtensions.DisplayName(Emulator);
+			CoreNameStatusBarButton.Text = coreDispName;
 			CoreNameStatusBarButton.Image = Emulator.Icon();
 			CoreNameStatusBarButton.ToolTipText = attributes.Ported ? "(ported) " : "";
 
@@ -3420,6 +3428,11 @@ namespace BizHawk.Client.EmuHawk
 						if (Config.AviCaptureOsd)
 						{
 							output = new BitmapBufferVideoProvider(CaptureOSD());
+							disposableOutput = (IDisposable) output;
+						}
+						else if (Config.AviCaptureLua)
+						{
+							output = new BitmapBufferVideoProvider(CaptureLua());
 							disposableOutput = (IDisposable) output;
 						}
 						else

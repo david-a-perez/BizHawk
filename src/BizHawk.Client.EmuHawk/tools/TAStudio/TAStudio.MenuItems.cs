@@ -21,6 +21,7 @@ namespace BizHawk.Client.EmuHawk
 
 			saveSelectionToMacroToolStripMenuItem.Enabled =
 				placeMacroAtSelectionToolStripMenuItem.Enabled =
+				recentMacrosToolStripMenuItem.Enabled =
 				TasView.AnyRowsSelected;
 		}
 
@@ -228,17 +229,25 @@ namespace BizHawk.Client.EmuHawk
 				TasView.SelectRow(CurrentTasMovie.InputLogLength, false);
 			}
 
-			var macro = new MovieZone(
-				CurrentTasMovie,
-				Emulator,
-				Tools,
-				MovieSession,
-				TasView.FirstSelectedIndex ?? 0,
-				TasView.LastSelectedIndex ?? 0 - TasView.FirstSelectedIndex ?? 0 + 1);
+			var file = SaveFileDialog(
+				null,
+				MacroInputTool.SuggestedFolder(Config, Game),
+				MacroInputTool.MacrosFSFilterSet,
+				this
+			);
 
-			//var macroTool = Tools.Load<MacroInputTool>(false);
-			var macroTool = new MacroInputTool { Config = Config };
-			macroTool.SaveMacroAs(macro);
+			if (file != null)
+			{
+				new MovieZone(
+					Emulator,
+					Tools,
+					MovieSession,
+					TasView.FirstSelectedIndex.Value,
+					TasView.LastSelectedIndex.Value - TasView.FirstSelectedIndex.Value + 1)
+					.Save(file.FullName);
+
+				Config.RecentMacros.Add(file.FullName);
+			}
 		}
 
 		private void PlaceMacroAtSelectionMenuItem_Click(object sender, EventArgs e)
@@ -248,13 +257,16 @@ namespace BizHawk.Client.EmuHawk
 				return;
 			}
 
-			//var macroTool = Tools.Load<MacroInputTool>(false);
-			var macroTool = new MacroInputTool { Config = Config };
-			var macro = macroTool.LoadMacro(Emulator, Tools);
-			if (macro != null)
+			var file = OpenFileDialog(
+				null,
+				MacroInputTool.SuggestedFolder(Config, Game),
+				MacroInputTool.MacrosFSFilterSet
+			);
+
+			if (file != null)
 			{
-				macro.Start = TasView.FirstSelectedIndex ?? 0;
-				macro.PlaceZone(CurrentTasMovie, Config);
+				DummyLoadMacro(file.FullName);
+				Config.RecentMacros.Add(file.FullName);
 			}
 		}
 
@@ -776,10 +788,10 @@ namespace BizHawk.Client.EmuHawk
 			{
 				MainForm.FrameAdvance();
 
-				if (CurrentTasMovie.TasStateManager.HasState(Emulator.Frame))
+				byte[] greenZone = CurrentTasMovie.TasStateManager[Emulator.Frame];
+				if (greenZone.Length > 0)
 				{
 					byte[] state = StatableEmulator.CloneSavestate();
-					byte[] greenZone = CurrentTasMovie.TasStateManager[Emulator.Frame];
 
 					if (!state.SequenceEqual(greenZone))
 					{
@@ -793,6 +805,7 @@ namespace BizHawk.Client.EmuHawk
 								File.WriteAllBytes(path, greenZone);
 							}
 						}
+
 						return;
 					}
 

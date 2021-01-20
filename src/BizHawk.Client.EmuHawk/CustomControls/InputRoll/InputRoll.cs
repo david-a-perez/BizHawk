@@ -214,12 +214,10 @@ namespace BizHawk.Client.EmuHawk
 			{
 				if (_horizontalOrientation != value)
 				{
-					int temp = ScrollSpeed;
 					_horizontalOrientation = value;
 					OrientationChanged();
 					_hBar.SmallChange = CellWidth;
 					_vBar.SmallChange = CellHeight;
-					ScrollSpeed = temp;
 				}
 			}
 		}
@@ -228,30 +226,7 @@ namespace BizHawk.Client.EmuHawk
 		/// Gets or sets the scrolling speed
 		/// </summary>
 		[Category("Behavior")]
-		public int ScrollSpeed
-		{
-			get
-			{
-				if (HorizontalOrientation)
-				{
-					return _hBar.SmallChange / CellWidth;
-				}
-
-				return _vBar.SmallChange / CellHeight;
-			}
-
-			set
-			{
-				if (HorizontalOrientation)
-				{
-					_hBar.SmallChange = value * CellWidth;
-				}
-				else
-				{
-					_vBar.SmallChange = value * CellHeight;
-				}
-			}
-		}
+		public int ScrollSpeed { get; set; }
 
 		/// <summary>
 		/// Gets or sets the sets the virtual number of rows to be displayed. Does not include the column header row.
@@ -1220,21 +1195,22 @@ namespace BizHawk.Client.EmuHawk
 
 			if (AllowRightClickSelection && e.Button == MouseButtons.Right)
 			{
-				if (!IsHoveringOnColumnCell && CurrentCell != null)
-				{
-					_currentX = e.X;
-					_currentY = e.Y;
-					Cell newCell = CalculatePointedCell(_currentX.Value, _currentY.Value);
-					newCell.RowIndex += FirstVisibleRow;
+				// In the case that we have a context menu already open, we must manually update the CurrentCell as MouseMove isn't triggered while it is open.
+				if (CurrentCell == null)
+					OnMouseMove(e);
 
+				if (!IsHoveringOnColumnCell)
+				{
 					// If this cell is not currently selected, clear and select
-					if (!_selectedItems.Contains(newCell))
+					if (!_selectedItems.Contains(CurrentCell))
 					{
 						_selectedItems.Clear();
 						SelectCell(CurrentCell);
+
+						Refresh();
+
+						SelectedIndexChanged?.Invoke(this, new EventArgs());
 					}
-					
-					CellChanged(newCell);
 				}
 			}
 
@@ -1274,7 +1250,7 @@ namespace BizHawk.Client.EmuHawk
 			int newVal;
 			if (increment)
 			{
-				newVal = bar.Value + bar.SmallChange;
+				newVal = bar.Value + bar.SmallChange * ScrollSpeed;
 				if (newVal > bar.Maximum - bar.LargeChange)
 				{
 					newVal = bar.Maximum - bar.LargeChange;
@@ -1282,7 +1258,7 @@ namespace BizHawk.Client.EmuHawk
 			}
 			else
 			{
-				newVal = bar.Value - bar.SmallChange;
+				newVal = bar.Value - bar.SmallChange * ScrollSpeed;
 				if (newVal < 0)
 				{
 					newVal = 0;

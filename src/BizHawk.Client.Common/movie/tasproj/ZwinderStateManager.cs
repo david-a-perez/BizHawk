@@ -22,7 +22,7 @@ namespace BizHawk.Client.Common
 		// These never decay, but can be invalidated, they are for reserved states
 		// such as markers and branches, but also we naturally evict states from recent to reserved, based
 		// on _ancientInterval
-		private Dictionary<int, byte[]> _reserved = new Dictionary<int, byte[]>();
+		private IDictionary<int, byte[]> _reserved;
 
 		// When recent states are evicted this interval is used to determine if we need to reserve the state
 		// We always want to keep some states throughout the movie
@@ -50,13 +50,16 @@ namespace BizHawk.Client.Common
 			}
 		}
 
-		private ZwinderStateManager(ZwinderBuffer current, ZwinderBuffer recent, ZwinderBuffer gapFiller, int ancientInterval, Func<int, bool> reserveCallback)
+		private ZwinderStateManager(ZwinderBuffer current, ZwinderBuffer recent, ZwinderBuffer gapFiller, Func<int, bool> reserveCallback, ZwinderStateManagerSettings settings)
 		{
 			_current = current;
 			_recent = recent;
 			_gapFiller = gapFiller;
-			_ancientInterval = ancientInterval;
 			_reserveCallback = reserveCallback;
+			Settings = settings;
+			_ancientInterval = settings.AncientStateInterval;
+			// init the reserved dictionary
+			RebuildReserved();
 		}
 		
 		public byte[] this[int frame]
@@ -79,6 +82,7 @@ namespace BizHawk.Client.Common
 
 		public void UpdateSettings(ZwinderStateManagerSettings settings, bool keepOldStates = false)
 		{
+			bool makeNewReserved = Settings?.AncientStoreType != settings.AncientStoreType;
 			Settings = settings;
 
 			_current = UpdateBuffer(_current, settings.Current(), keepOldStates);
@@ -108,19 +112,49 @@ namespace BizHawk.Client.Common
 			}
 			else
 			{
-				List<int> framesToRemove = new List<int>();
-				foreach (int f in _reserved.Keys)
+				if (_reserved != null)
 				{
-					if (f != 0 && !_reserveCallback(f))
-						framesToRemove.Add(f);
+					List<int> framesToRemove = new List<int>();
+					foreach (int f in _reserved.Keys)
+					{
+						if (f != 0 && !_reserveCallback(f))
+							framesToRemove.Add(f);
+					}
+					foreach (int f in framesToRemove)
+						EvictReserved(f);
 				}
-				foreach (int f in framesToRemove)
-					EvictReserved(f);
 			}
+
+			if (makeNewReserved)
+				RebuildReserved();
 
 			_ancientInterval = settings.AncientStateInterval;
 			RebuildStateCache();
 		}
+
+		private void RebuildReserved()
+		{
+			IDictionary<int, byte[]> newReserved;
+			switch (Settings.AncientStoreType)
+			{
+				case IRewindSettings.BackingStoreType.Memory:
+					newReserved = new Dictionary<int, byte[]>();
+					break;
+				case IRewindSettings.BackingStoreType.TempFile:
+					newReserved = new TempFileStateDictionary();
+					break;
+				default:
+					throw new ArgumentException("Unsupported store type for reserved states.");
+			}
+			if (_reserved != null)
+			{
+				foreach (var kvp in _reserved)
+					newReserved.Add(kvp.Key, kvp.Value);
+				(_reserved as TempFileStateDictionary)?.Dispose();
+			}
+			_reserved = newReserved;
+		}
+
 		private ZwinderBuffer UpdateBuffer(ZwinderBuffer buffer, RewindConfig newConfig, bool keepOldStates)
 		{
 			if (buffer == null) // just make a new one, plain and simple
@@ -268,8 +302,11 @@ namespace BizHawk.Client.Common
 				throw new InvalidOperationException("Frame 0 can not be evicted.");
 			}
 
-			_reserved.Remove(frame);
-			StateCache.Remove(frame);
+			if (_reserved.ContainsKey(frame))
+			{
+				_reserved.Remove(frame);
+				StateCache.Remove(frame);
+			}
 		}
 
 		public void Capture(int frame, IStatable source, bool force = false)
@@ -288,13 +325,10 @@ namespace BizHawk.Client.Common
 
 			// We do not want to consider reserved states for a notion of Last
 			// reserved states can include future states in the case of branch states
-			if (frame <= LastRing)
+			if ((frame <= LastRing && NeedsGap(frame)) || force)
 			{
-				if (NeedsGap(frame))
-				{
-					CaptureGap(frame, source);
-				}
-
+				// We use the gap buffer for forced capture to avoid crowding the "current" buffer and thus reducing it's actual span of covered frames.
+				CaptureGap(frame, source);
 				return;
 			}
 
@@ -378,14 +412,18 @@ namespace BizHawk.Client.Common
 			// The user navigates to a frame after ancient interval 2, replay happens and we start filling gaps
 			// Then the user, still without having made an edit, navigates to a frame before ancient interval 2, but after ancient interval 1
 			// Without this logic, we end up with out of order states
-			// We cannot use InvalidateGaps because that does not address the state cache.
+			// We cannot use InvalidateGaps because that does not address the state cache or check for reserved states.
 			for (int i = _gapFiller.Count - 1; i >= 0; i--)
 			{
-				int lastGap = _gapFiller.GetState(i).Frame;
-				if (lastGap < frame)
+				var lastGap = _gapFiller.GetState(i);
+				if (lastGap.Frame < frame)
 					break;
 
-				StateCache.Remove(lastGap);
+				if (_reserveCallback(lastGap.Frame))
+					AddToReserved(lastGap);
+				else
+					StateCache.Remove(lastGap.Frame);
+
 				_gapFiller.InvalidateEnd(i);
 			}
 
@@ -494,16 +532,17 @@ namespace BizHawk.Client.Common
 
 		public static ZwinderStateManager Create(BinaryReader br, ZwinderStateManagerSettings settings, Func<int, bool> reserveCallback)
 		{
-			var current = ZwinderBuffer.Create(br);
-			var recent = ZwinderBuffer.Create(br);
-			var gaps = ZwinderBuffer.Create(br);
+			// Initial format had no version number, but I think it's a safe bet no valid file has buffer size 2^56 or more so this should work.
+			int version = br.ReadByte();
 
-			var ancientInterval = br.ReadInt32();
+			var current = ZwinderBuffer.Create(br, settings.Current(), version == 0);
+			var recent = ZwinderBuffer.Create(br, settings.Recent());
+			var gaps = ZwinderBuffer.Create(br, settings.GapFiller());
 
-			var ret = new ZwinderStateManager(current, recent, gaps, ancientInterval, reserveCallback)
-			{
-				Settings = settings
-			};
+			if (version == 0)
+				settings.AncientStateInterval = br.ReadInt32();
+
+			var ret = new ZwinderStateManager(current, recent, gaps, reserveCallback, settings);
 
 			var ancientCount = br.ReadInt32();
 			for (var i = 0; i < ancientCount; i++)
@@ -521,11 +560,12 @@ namespace BizHawk.Client.Common
 
 		public void SaveStateHistory(BinaryWriter bw)
 		{
+			// version
+			bw.Write((byte)1);
+
 			_current.SaveStateBinary(bw);
 			_recent.SaveStateBinary(bw);
 			_gapFiller.SaveStateBinary(bw);
-
-			bw.Write(_ancientInterval);
 
 			bw.Write(_reserved.Count);
 			foreach (var s in _reserved)
